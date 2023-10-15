@@ -24,7 +24,7 @@ app.use(cors(
 ////////////////
 //Add new User//
 ///////////////
-  app.post("/api/newuser", (req, res) => {
+app.post("/api/newuser", (req, res) => {
   const sql = "INSERT INTO users (username, password) VALUES (?, ?)";
   const { username, password } = req.body;
   bcrypt.genSalt(10, (err, salt) => {
@@ -46,7 +46,7 @@ app.use(cors(
             return res.json({ success: false, error: `${username} could not be registered` });
           };
         });
-      } catch (err) { 
+      } catch (err) {
         return res.json({ success: false, error: err });
       };
     });
@@ -99,29 +99,29 @@ app.post("/api/login", (req, res) => {
 app.post("/api/newperson", fetchuser, async (req, res) => {
   const { name, dob, dod } = req.body;
   let sql = "SELECT * FROM users where username = ?";
-  try{
+  try {
     conn.query(sql, [req.username], (err, result) => {
-      if(err) {
-        return res.json({success:false, error:err});
+      if (err) {
+        return res.json({ success: false, error: err });
       };
       const userid = result[0].id;
       sql = "INSERT INTO person (name, dob, dod, userid) VALUES (?, ?, ?, ?)";
-      try{
+      try {
         conn.query(sql, [name, dob, dod, userid], (err, result) => {
-          if(err) {
-            return res.json({success:false, error:err});
+          if (err) {
+            return res.json({ success: false, error: err });
           };
-          if(result.affectedRows){
-            return res.json({success:true, message:"Reords saved"});
+          if (result.affectedRows) {
+            return res.json({ success: true, message: "Reords saved" });
           } else {
-            return res.json({success:false, error:"Database Error"});
+            return res.json({ success: false, error: "Database Error" });
           };
         });
-        } catch(err) {
+      } catch (err) {
         return res.json({ success: false, error: err });
-      }; 
+      };
     });
-  } catch(err) {
+  } catch (err) {
     return res.json({ success: false, error: err });
   };
 });
@@ -131,57 +131,89 @@ app.post("/api/newperson", fetchuser, async (req, res) => {
 ///////////////////
 app.get("/api/listpersons", fetchuser, async (req, res) => {
   let sql = "SELECT * FROM users WHERE username = ?";
-  try{
+  try {
     conn.query(sql, [req.username], (err, result) => {
-      if(err) {
-        return res.json({success:false, error:err});
+      if (err) {
+        return res.json({ success: false, error: err });
       };
       const userid = result[0].id;
       sql = "SELECT id, name, dob, dom, dod FROM person WHERE userid = 1  ORDER BY name";
-      try{
+      try {
         conn.query(sql, (err, result) => {
-          if(err) {
-            return res.json({success:false, error:err});
+          if (err) {
+            return res.json({ success: false, error: err });
           };
-          if(result.length){
-            return res.json({success:true, data:result});
+          if (result.length) {
+            return res.json({ success: true, data: result });
           } else {
-            return res.json({success:false, error:"No records available"});
+            return res.json({ success: false, error: "No records available" });
           };
         });
-      } catch(err) {
+      } catch (err) {
         return res.json({ success: false, error: err });
       };
     });
-  } catch(err) {
+  } catch (err) {
   };
 });
 
 //////////////////////////////
 //Find relations of a person//
 //////////////////////////////
-app.get("/api/relations/:id", fetchuser, async(req, res) => {
-  const id = req.params.id; 
+app.get("/api/relations/:id", fetchuser, async (req, res) => {
+  const id = req.params.id;
   let sql = "SELECT * FROM users WHERE username = ?";
-  try{
+  try {
     conn.query(sql, [req.username], (err, result) => {
-      if(err) {
-        return res.json({success:false, error:err});
+      if (err) {
+        return res.json({ success: false, error: err });
       };
       const userid = result[0].id;
       sql = "SELECT r.id, p.id as personid, p.name, t.relation, pp.name AS relative FROM relation r LEFT JOIN relation_type t ON t.id = r.relationid LEFT JOIN person p ON p.id = r.relationof LEFT JOIN person pp ON pp.id = r.relation WHERE p.id = ?  and r.userid = ?";
-      try{
+      try {
         conn.query(sql, [id, userid], (err, result) => {
-          if(err){
-            return res.json({success:false, error:err});
+          if (err) {
+            return res.json({ success: false, error: err });
           };
-          return res.json({success:true, data:result});
+            let father = [0, 0, ""];
+            let mother = [0, 0, ""];
+            let spouse = [0, 0, ""];
+            let sons = [];
+            let daughters = [];
+            let brothers = [];
+            let sisters = [];
+          let i;
+          for (i = 0; i < result.length; i++) {
+            if (result[i].relation === "Father") {
+              father = new Array(result[i].id, result[i].personid, result[i].relative);
+            };
+            if (result[i].relation === "Mother") {
+              mother = new Array(result[i].id, result[i].personid, result[i].relative);
+            };
+            if (result[i].relation === "Spouse") {
+              spouse = new Array(result[i].id, result[i].personid, result[i].relative);
+            };
+            if (result[i].relation === "Son") {
+              sons.push([result[i].id, result[i].personid, result[i].relative]);
+            };
+            if (result[i].relation === "Daughter") {
+              daughters.push([result[i].id, result[i].personid, result[i].relative]);
+            };
+            if (result[i].relation === "Brother") {
+              brothers.push([result[i].id, result[i].personid, result[i].relative]);
+            };
+            if (result[i].relation === "Sister") {
+              sisters.push([result[i].id, result[i].personid, result[i].relative]);
+            };
+          };
+          console.log({father, mother, spouse, sons, daughters, brothers, sisters});
+          return res.json({ success: true, father:father, mother:mother, spouse:spouse, sons:sons, daughters:daughters, brothers:brothers, sisters:sisters } );
         });
-        } catch(err) {
+      } catch (err) {
         return res.json({ success: false, error: err });
       };
     });
-    } catch(err) {
+  } catch (err) {
     return res.json({ success: false, error: err });
   };
 });
