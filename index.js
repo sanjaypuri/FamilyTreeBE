@@ -175,13 +175,13 @@ app.get("/api/relations/:id", fetchuser, async (req, res) => {
           if (err) {
             return res.json({ success: false, error: err });
           };
-            let father = [0, 0, ""];
-            let mother = [0, 0, ""];
-            let spouse = [0, 0, ""];
-            let sons = [];
-            let daughters = [];
-            let brothers = [];
-            let sisters = [];
+          let father = [0, 0, ""];
+          let mother = [0, 0, ""];
+          let spouse = [0, 0, ""];
+          let sons = [];
+          let daughters = [];
+          let brothers = [];
+          let sisters = [];
           let i;
           for (i = 0; i < result.length; i++) {
             if (result[i].relation === "Father") {
@@ -214,6 +214,40 @@ app.get("/api/relations/:id", fetchuser, async (req, res) => {
       };
     });
   } catch (err) {
+    return res.json({ success: false, error: err });
+  };
+});
+
+///////////////////
+//Delete Relation//
+///////////////////
+app.delete("/api/relation/:id", fetchuser, async (req, res) => {
+  const id = req.params.id;
+  let sql = "SELECT * FROM users WHERE username = ?";
+  try {
+    conn.query(sql, [req.username], (err, result) => {
+      if (err) {
+        return res.json({ success: false, error: err });
+      };
+      const userid = result[0].id;
+      sql = "DELETE FROM relation WHERE userid = ? and id = ?";
+      try{
+        conn.query(sql, [userid, id], (err, result) => {
+          if(err) {
+            return res.json({success:false, error:err});
+          };
+          if(result.affectedRows){
+            return res.json({success:true, message:"record deleted successfully"});
+          } else {
+            console.log(err);
+            return res.json({ success: false, error: "Database Error" });
+          };
+        });
+      } catch(err) {
+        return res.json({ success: false, error: err });
+      };
+    });
+  } catch(err) {
     return res.json({ success: false, error: err });
   };
 });
