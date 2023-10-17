@@ -93,6 +93,34 @@ app.post("/api/login", (req, res) => {
   };
 });
 
+///////////////////
+//List of persons//
+///////////////////
+app.get("/api/list", fetchuser, async (req, res) => {
+  let sql = "SELECT * FROM users where username = ?";
+  try {
+    conn.query(sql, [req.username], (err, result) => {
+      if (err) {
+        return res.json({ success: false, error: err });
+      };
+      const userid = result[0].id;
+      sql = "SELECT id value, name label FROM person WHERE userid = ? order by name";
+      try{
+        conn.query(sql, [userid], (err, result) => {
+          if(err) {
+            return res.json ({success:false, error:err});
+          };
+          return res.json({success:true, data:result});
+        });
+      } catch(err) {
+        return res.json({ success: false, error: err });
+      };
+    });
+    } catch(err) {
+    return res.json({ success: false, error: err });
+  };
+});
+
 //////////////////
 //Add New Person//
 //////////////////
