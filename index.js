@@ -154,6 +154,39 @@ app.post("/api/newperson", fetchuser, async (req, res) => {
   };
 });
 
+////////////////////
+//Add New Relation//
+////////////////////
+app.post("/api/newrelation", fetchuser, async (req, res) => {
+  const { relationid, relation, relationof } = req.body;
+  let sql = "SELECT * FROM users where username = ?";
+  try {
+    conn.query(sql, [req.username], (err, result) => {
+      if (err) {
+        return res.json({ success: false, error: err });
+      };
+      const userid = result[0].id;
+      sql = "INSERT INTO relation (relationid, relation, relationof, userid) VALUES (?, ?, ?, ?)";
+      try {
+        conn.query(sql, [relationid, relation, relationof, userid], (err, result) => {
+          if (err) {
+            return res.json({ success: false, error: err });
+          };
+          if (result.affectedRows) {
+            return res.json({ success: true, message: "Reords saved" });
+          } else {
+            return res.json({ success: false, error: "Database Error" });
+          };
+        });
+      } catch (err) {
+        return res.json({ success: false, error: err });
+      };
+    });
+  } catch (err) {
+    return res.json({ success: false, error: err });
+  };
+});
+
 ///////////////////
 //List of Persons//
 ///////////////////
@@ -203,9 +236,9 @@ app.get("/api/relations/:id", fetchuser, async (req, res) => {
           if (err) {
             return res.json({ success: false, error: err });
           };
-          let father = [0, 0, ""];
-          let mother = [0, 0, ""];
-          let spouse = [0, 0, ""];
+          let father = [0, 0, " "];
+          let mother = [0, 0, " "];
+          let spouse = [0, 0, " "];
           let sons = [];
           let daughters = [];
           let brothers = [];
@@ -234,8 +267,36 @@ app.get("/api/relations/:id", fetchuser, async (req, res) => {
               sisters.push([result[i].id, result[i].personid, result[i].relative]);
             };
           };
-          console.log({father, mother, spouse, sons, daughters, brothers, sisters});
           return res.json({ success: true, father:father, mother:mother, spouse:spouse, sons:sons, daughters:daughters, brothers:brothers, sisters:sisters } );
+        });
+      } catch (err) {
+        return res.json({ success: false, error: err });
+      };
+    });
+  } catch (err) {
+    return res.json({ success: false, error: err });
+  };
+});
+
+/////////////////////////////////////
+//Get person id from relation recno//
+/////////////////////////////////////
+app.get("/api/getid/:id", fetchuser, async (req, res) => {
+  const recid = req.params.id;
+  let sql = "SELECT * FROM users WHERE username = ?";
+  try {
+    conn.query(sql, [req.username], (err, result) => {
+      if (err) {
+        return res.json({ success: false, error: err });
+      };
+      const userid = result[0].id;
+      sql = "SELECT relation as id from relation WHERE id = ?  and userid = ?";
+      try {
+        conn.query(sql, [recid, userid], (err, result) => {
+          if (err) {
+            return res.json({ success: false, error: err });
+          };
+          return res.json({ success: true, id:result[0].id } );
         });
       } catch (err) {
         return res.json({ success: false, error: err });
