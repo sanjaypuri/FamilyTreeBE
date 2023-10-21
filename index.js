@@ -125,7 +125,8 @@ app.get("/api/list", fetchuser, async (req, res) => {
 //Add New Person//
 //////////////////
 app.post("/api/newperson", fetchuser, async (req, res) => {
-  const { name, dob, dod } = req.body;
+  const { name, gender, dob, dod } = req.body;
+  console.log(req.body);
   let sql = "SELECT * FROM users where username = ?";
   try {
     conn.query(sql, [req.username], (err, result) => {
@@ -133,9 +134,9 @@ app.post("/api/newperson", fetchuser, async (req, res) => {
         return res.json({ success: false, error: err });
       };
       const userid = result[0].id;
-      sql = "INSERT INTO person (name, dob, dod, userid) VALUES (?, ?, ?, ?)";
+      sql = "INSERT INTO person (name, gender, dob, dod, userid) VALUES (?, ?, ?, ?, ?)";
       try {
-        conn.query(sql, [name, dob, dod, userid], (err, result) => {
+        conn.query(sql, [name, gender, dob, dod, userid], (err, result) => {
           if (err) {
             return res.json({ success: false, error: err });
           };
@@ -198,7 +199,7 @@ app.get("/api/listpersons", fetchuser, async (req, res) => {
         return res.json({ success: false, error: err });
       };
       const userid = result[0].id;
-      sql = "SELECT id, name, dob, dom, dod FROM person WHERE userid = 1  ORDER BY name";
+      sql = "SELECT id, name, gender, dob, dom, dod FROM person WHERE userid = 1  ORDER BY name";
       try {
         conn.query(sql, (err, result) => {
           if (err) {
@@ -230,7 +231,7 @@ app.get("/api/relations/:id", fetchuser, async (req, res) => {
         return res.json({ success: false, error: err });
       };
       const userid = result[0].id;
-      sql = "SELECT r.id, p.id as personid, p.name, t.relation, pp.name AS relative FROM relation r LEFT JOIN relation_type t ON t.id = r.relationid LEFT JOIN person p ON p.id = r.relationof LEFT JOIN person pp ON pp.id = r.relation WHERE p.id = ?  and r.userid = ?";
+      sql = "SELECT r.id, p.id as personid, p.name, pp.gender, t.relation, pp.name AS relative FROM relation r LEFT JOIN relation_type t ON t.id = r.relationid LEFT JOIN person p ON p.id = r.relationof LEFT JOIN person pp ON pp.id = r.relation WHERE p.id = ?  and r.userid = ?";
       try {
         conn.query(sql, [id, userid], (err, result) => {
           if (err) {
@@ -246,28 +247,58 @@ app.get("/api/relations/:id", fetchuser, async (req, res) => {
           let i;
           for (i = 0; i < result.length; i++) {
             if (result[i].relation === "Father") {
-              father = new Array(result[i].id, result[i].personid, result[i].relative);
+              father = new Array(result[i].id, result[i].personid, result[i].relative, result[i].gender);
             };
             if (result[i].relation === "Mother") {
-              mother = new Array(result[i].id, result[i].personid, result[i].relative);
+              mother = new Array(result[i].id, result[i].personid, result[i].relative, result[i].gender);
             };
             if (result[i].relation === "Spouse") {
-              spouse = new Array(result[i].id, result[i].personid, result[i].relative);
+              spouse = new Array(result[i].id, result[i].personid, result[i].relative, result[i].gender);
             };
             if (result[i].relation === "Son") {
-              sons.push([result[i].id, result[i].personid, result[i].relative]);
+              sons.push([result[i].id, result[i].personid, result[i].relative, result[i].gender]);
             };
             if (result[i].relation === "Daughter") {
-              daughters.push([result[i].id, result[i].personid, result[i].relative]);
+              daughters.push([result[i].id, result[i].personid, result[i].relative, result[i].gender]);
             };
             if (result[i].relation === "Brother") {
-              brothers.push([result[i].id, result[i].personid, result[i].relative]);
+              brothers.push([result[i].id, result[i].personid, result[i].relative, result[i].gender]);
             };
             if (result[i].relation === "Sister") {
-              sisters.push([result[i].id, result[i].personid, result[i].relative]);
+              sisters.push([result[i].id, result[i].personid, result[i].relative, result[i].gender]);
             };
           };
           return res.json({ success: true, father:father, mother:mother, spouse:spouse, sons:sons, daughters:daughters, brothers:brothers, sisters:sisters } );
+        });
+      } catch (err) {
+        return res.json({ success: false, error: err });
+      };
+    });
+  } catch (err) {
+    return res.json({ success: false, error: err });
+  };
+});
+
+//////////////////////////////
+//Find relations of a person//
+//////////////////////////////
+app.post("/api/getid", fetchuser, async (req, res) => {
+  const { relationid, relationof } = req.body;
+  const id = req.params.id;
+  let sql = "SELECT * FROM users WHERE username = ?";
+  try {
+    conn.query(sql, [req.username], (err, result) => {
+      if (err) {
+        return res.json({ success: false, error: err });
+      };
+      const userid = result[0].id;
+      sql = "SELECT relation FROM relation WHERE relationid = ? and relationof = ? and userid = ?";
+      try {
+        conn.query(sql, [relationid, relationof, userid], (err, result) => {
+          if (err) {
+            return res.json({ success: false, error: err });
+          };
+          return res.json({ success: true, id:result[0].relation} );
         });
       } catch (err) {
         return res.json({ success: false, error: err });
@@ -322,6 +353,76 @@ app.delete("/api/relation/:id", fetchuser, async (req, res) => {
       sql = "DELETE FROM relation WHERE userid = ? and id = ?";
       try{
         conn.query(sql, [userid, id], (err, result) => {
+          if(err) {
+            return res.json({success:false, error:err});
+          };
+          if(result.affectedRows){
+            return res.json({success:true, message:"record deleted successfully"});
+          } else {
+            console.log(err);
+            return res.json({ success: false, error: "Database Error" });
+          };
+        });
+      } catch(err) {
+        return res.json({ success: false, error: err });
+      };
+    });
+  } catch(err) {
+    return res.json({ success: false, error: err });
+  };
+});
+
+///////////////////
+//Delete Relation//
+///////////////////
+app.delete("/api/delrelations/", fetchuser, async (req, res) => {
+  const { relationid, relationof } = req.body;
+  // const id = req.params.id;
+  let sql = "SELECT * FROM users WHERE username = ?";
+  try {
+    conn.query(sql, [req.username], (err, result) => {
+      if (err) {
+        return res.json({ success: false, error: err });
+      };
+      const userid = result[0].id;
+      sql = "DELETE FROM relation WHERE relationid = ? and relationof = ? and userid = ?";
+      try{
+        conn.query(sql, [relationid, relationof, userid], (err, result) => {
+          if(err) {
+            return res.json({success:false, error:err});
+          };
+          if(result.affectedRows){
+            return res.json({success:true, message:"record deleted successfully"});
+          } else {
+            console.log(err);
+            return res.json({ success: false, error: "Database Error" });
+          };
+        });
+      } catch(err) {
+        return res.json({ success: false, error: err });
+      };
+    });
+  } catch(err) {
+    return res.json({ success: false, error: err });
+  };
+});
+
+///////////////////
+//Delete Relation2//
+///////////////////
+app.delete("/api/delrelations2/", fetchuser, async (req, res) => {
+  const { relationid, relation, relationof } = req.body;
+  const id = req.params.id;
+  let sql = "SELECT * FROM users WHERE username = ?";
+  try {
+    conn.query(sql, [req.username], (err, result) => {
+      if (err) {
+        return res.json({ success: false, error: err });
+      };
+      const userid = result[0].id;
+      sql = "DELETE FROM relation WHERE relationid = ? and relation = ? and relationof = ? and userid = ?";
+      try{
+        conn.query(sql, [relationid, relation, relationof, userid], (err, result) => {
           if(err) {
             return res.json({success:false, error:err});
           };
